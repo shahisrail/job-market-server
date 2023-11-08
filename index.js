@@ -141,7 +141,7 @@ async function run() {
       const result = await Addjobs.updateOne(filter, Cart);
       res.send(result);
     });
-
+// delete
     app.delete('/cart/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
