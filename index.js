@@ -17,6 +17,8 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParse())
 
+
+// mongo db 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.bkdyuro.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -31,7 +33,7 @@ const logger = (req, res, next) => {
   console.log(('log : info'), req.method, req.url);
   next();
 }
-// middelewares
+// middelewares verify token
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token
   console.log("token in the middle ware", token);
@@ -92,6 +94,7 @@ async function run() {
       res.send(result);
     });
 
+    // get home page
     app.get('/carts', async (req, res) => {
       const cursor = Addjobs.find();
       const result = await cursor.toArray();
@@ -119,7 +122,6 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-
 
     app.put('/cart/:id', async (req, res) => {
       const id = req.params.id;
