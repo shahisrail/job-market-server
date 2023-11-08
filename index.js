@@ -17,7 +17,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParse())
 
-const uri = "mongodb+srv://Assaignment-11:3jIDCzzgWcg78wdH@cluster0.bkdyuro.mongodb.net/?retryWrites=true&w=majority";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.bkdyuro.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -72,7 +72,6 @@ async function run() {
         secure: true,
         sameSite: false
       })
-
         .send({ success: true })
     })
 
