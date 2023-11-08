@@ -3,6 +3,8 @@ const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const jwt = require('jsonwebtoken')
+const cookieParse = require('cookie-parser')
+require('dotenv').config()
 const port = process.env.PORT || 5000;
 
 // Middleware
@@ -13,6 +15,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(cookieParse())
 
 const uri = "mongodb+srv://Assaignment-11:3jIDCzzgWcg78wdH@cluster0.bkdyuro.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri, {
@@ -22,6 +25,28 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+// middelseware
+const logger = (req, res, next) => {
+  console.log(('log : info'), req.method, req.url);
+  next();
+}
+// middelewares
+const verifyToken = (req, res, next) => {
+  const token = req?.cookies?.token
+  console.log("token in the middle ware", token);
+  if (!token) {
+    return res.status(401).send({ massage: "unathoeized  " })
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ massage: 'unathoeized accsess' })
+    }
+    req.user = decoded;
+    next()
+  })
+}
 
 let Addjobs;
 let mybids;
@@ -35,6 +60,206 @@ async function run() {
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
+
+    // auth api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body
+      console.log("user token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '17hr' })
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: false
+      })
+
+        .send({ success: true })
+    })
+
+    app.post('/logout', async (req, res) => {
+      const user = req.body
+      console.log('login out', user);
+      res.clearCookie('token', { maxAge: 0, httpOnly: true, secure: false }).send({ succses: true })
+    })
+
+
+
+    //service  
+
+    // post
+    app.post('/cart', async (req, res) => {
+      const carts = req.body;
+      const result = await Addjobs.insertOne(carts);
+      res.send(result);
+    });
+
+    app.get('/carts', async (req, res) => {
+      const cursor = Addjobs.find();
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
+    app.get('/cart/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await Addjobs.findOne(query);
+      res.send(result);
+    });
+
+    app.get('/cart', logger, async (req, res) => {
+      try {
+        // console.log( 'token owner info ', req.user);
+        const query = {};
+        if (req.query.Email) {
+          query.Email = req.query.Email;
+        }
+        const result = await Addjobs.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+
+    app.put('/cart/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedCart = req.body;
+      const Cart = {
+        $set: {
+          Email: updatedCart.Email,
+          Jobtitle: updatedCart.Jobtitle,
+          Deadline: updatedCart.Deadline,
+          Description: updatedCart.Description,
+          Category: updatedCart.Category,
+          Minimumprice: updatedCart.Minimumprice,
+          Maximumprice: updatedCart.Maximumprice
+        }
+      };
+      const result = await Addjobs.updateOne(filter, Cart);
+      res.send(result);
+    });
+
+    app.delete('/cart/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await Addjobs.deleteOne(query);
+      res.send(result);
+    });
+
+
+    // my bits 
+    app.post('/mybids', async (req, res) => {
+      const carts = req.body;
+      const result = await mybids.insertOne(carts);
+      res.send(result);
+    });
+
+    app.get('/mybids',verifyToken, async (req, res) => {
+      try {
+        let query = {};
+        let sort = {}
+        if (req.user.email !== req.query.Email) {
+          return res.send.status(403).send({ massage: "forbidden accsess" })
+        }
+
+        const sortField = req.query.sortField
+        const sortOrder = req.query.sortOrder
+        console.log('token woner info', req.user);
+       
+        if (req.user.email !== req.query.Email) {
+          return res.send.status(403).send({ massage: "forbidden accsess" })
+        }
+
+        if (req.query.Email) {
+          query.Email = req.query.Email;
+        }
+        if (sortField && sortOrder) {
+          sort[sortField] = sortOrder
+        }
+        const cursor = mybids.find(query).sort(sort);
+        const result = await cursor.toArray()
+        res.send(result);
+
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+    app.get('/mybids/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await mybids.findOne(query);
+      res.send(result);
+    });
+
+
+    // byer bids request
+    app.post('/BidRequest', async (req, res) => {
+      const carts = req.body;
+      const result = await mybids.insertOne(carts);
+      res.send(result);
+    });
+
+    app.get('/BidRequest', verifyToken, async (req, res) => {
+      try {
+        const query = {};
+        if (req.user.email !== req.query.Byeremail) {
+          return res.send.status(403).send({ massage: "forbidden accsess" })
+        }
+        if (req.query.Byeremail) {
+          query.Byeremail = req.query.Byeremail;
+        }
+        const result = await mybids.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+
+    // byer delete and ackcept 
+
+    app.patch('/BidRequest/:id', async (request, response) => {
+      const id = request.params.id
+      const query = { _id: new ObjectId(id) }
+
+      const updateStatue = {
+        $set: {
+          status: request.body.status,
+        },
+      };
+      const result = await mybids.updateOne(query, updateStatue);
+      response.send(result);
+    });
+    app.patch('/mybids/:id', async (request, response) => {
+      const id = request.params.id
+      const query = { _id: new ObjectId(id) }
+
+      const updateStatue = {
+        $set: {
+          status: request.body.status,
+        },
+      };
+      const result = await mybids.updateOne(query, updateStatue);
+      response.send(result);
+    });
+    app.patch('/BidRequest/:id', async (request, response) => {
+      const id = request.params.id
+      const query = { _id: new ObjectId(id) }
+
+      const updateStatue = {
+        $set: {
+          status: request.body.status,
+        },
+      };
+      const result = await mybids.updateOne(query, updateStatue);
+      response.send(result);
+    });
+
   } catch (error) {
     console.error(error);
   }
@@ -43,193 +268,12 @@ async function run() {
 run().catch(console.dir);
 
 
-// auth api
-// app.post('/jwt', async (req, res) => {
-//   const user = req.body
-//   console.log("user token", user);
-//   const token = jwt.sign(user, d006b6ee310287fa1d1430612621bdbf162a0ebcdbda64dd2459559d1c599c375bb645569f2f308ee5fca89573a761087fa76a26a58b9be9d4de5623fd9961a8, { expiresIn: '17' })
-//   res.cookie('token',token,{
-//     httpOnly: true,
-//     secure:true
-//   })
-    
-//     send({ success: true })
-// })
-
-
-// app.post('/logout', async (req, res) => {
-//   const user = req.body
-//   console.log('loging out',user);
-//   res.clearCookie('token',{maxAge:0}.send({success:true}))
-//   })
 
 
 
-//service  
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
-// post
-app.post('/cart', async (req, res) => {
-  const carts = req.body;
-  const result = await Addjobs.insertOne(carts);
-  res.send(result);
-});
-
-app.get('/cart', async (req, res) => {
-  try {
-    const query = {};
-    if (req.query.Email) {
-      query.Email = req.query.Email;
-    }
-    const result = await Addjobs.find(query).toArray();
-    res.send(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.get('/cart/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) };
-  const result = await Addjobs.findOne(query);
-  res.send(result);
-});
-
-app.put('/cart/:id', async (req, res) => {
-  const id = req.params.id;
-  const filter = { _id: new ObjectId(id) };
-  const updatedCart = req.body;
-  const Cart = {
-    $set: {
-      Email: updatedCart.Email,
-      Jobtitle: updatedCart.Jobtitle,
-      Deadline: updatedCart.Deadline,
-      Description: updatedCart.Description,
-      Category: updatedCart.Category,
-      Minimumprice: updatedCart.Minimumprice,
-      Maximumprice: updatedCart.Maximumprice
-    }
-  };
-  const result = await Addjobs.updateOne(filter, Cart);
-  res.send(result);
-});
-
-app.delete('/cart/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) };
-  const result = await Addjobs.deleteOne(query);
-  res.send(result);
-});
-
-
-// my bits 
-app.post('/mybids', async (req, res) => {
-  const carts = req.body;
-  const result = await mybids.insertOne(carts);
-  res.send(result);
-});
-
-app.get('/mybids', async (req, res) => {
-  try {
-    let query = {};
-    let sort = {}
-    
-    const sortField = req.query.sortField
-    const sortOrder = req.query.sortOrder
-
-
-
-    if (req.query.Email) {
-      query.Email = req.query.Email;
-    }
-    if (sortField && sortOrder){
-      sort[sortField] = sortOrder
-    }
-    const cursor = mybids.find(query).sort(sort);
-    const result = await cursor.toArray()
-    res.send(result);
-    
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.get('/mybids/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) };
-  const result = await mybids.findOne(query);
-  res.send(result);
-});
-
-
-// byer bids request
-app.post('/BidRequest', async (req, res) => {
-  const carts = req.body;
-  const result = await mybids.insertOne(carts);
-  res.send(result);
-});
-
-app.get('/BidRequest', async (req, res) => {
-  try {
-    const query = {};
-    if (req.query.Byeremail) {
-      query.Byeremail = req.query.Byeremail;
-    }
-    const result = await mybids.find(query).toArray();
-    res.send(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-
-// byer delete and ackcept 
-
-app.patch('/BidRequest/:id', async (request, response) => {
-  const id = request.params.id
-  const query = { _id: new ObjectId(id) }
-
-  const updateStatue = {
-    $set: {
-      status: request.body.status,
-    },
-  };
-  const result = await mybids.updateOne(query, updateStatue);
-  response.send(result);
-});
-app.patch('/mybids/:id', async (request, response) => {
-  const id = request.params.id
-  const query = { _id: new ObjectId(id) }
-
-  const updateStatue = {
-    $set: {
-      status: request.body.status,
-    },
-  };
-  const result = await mybids.updateOne(query, updateStatue);
-  response.send(result);
-});
-app.patch('/BidRequest/:id', async (request, response) => {
-  const id = request.params.id
-  const query = { _id: new ObjectId(id) }
-
-  const updateStatue = {
-    $set: {
-      status: request.body.status,
-    },
-  };
-  const result = await mybids.updateOne(query, updateStatue);
-  response.send(result);
-});
-
-
-// sort by viwe in 
-
-
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
