@@ -2,10 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
+const jwt = require('jsonwebtoken')
 const port = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173'
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 const uri = "mongodb+srv://Assaignment-11:3jIDCzzgWcg78wdH@cluster0.bkdyuro.mongodb.net/?retryWrites=true&w=majority";
@@ -36,6 +42,30 @@ async function run() {
 
 run().catch(console.dir);
 
+
+// auth api
+// app.post('/jwt', async (req, res) => {
+//   const user = req.body
+//   console.log("user token", user);
+//   const token = jwt.sign(user, d006b6ee310287fa1d1430612621bdbf162a0ebcdbda64dd2459559d1c599c375bb645569f2f308ee5fca89573a761087fa76a26a58b9be9d4de5623fd9961a8, { expiresIn: '17' })
+//   res.cookie('token',token,{
+//     httpOnly: true,
+//     secure:true
+//   })
+    
+//     send({ success: true })
+// })
+
+
+// app.post('/logout', async (req, res) => {
+//   const user = req.body
+//   console.log('loging out',user);
+//   res.clearCookie('token',{maxAge:0}.send({success:true}))
+//   })
+
+
+
+//service  
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
@@ -103,12 +133,24 @@ app.post('/mybids', async (req, res) => {
 
 app.get('/mybids', async (req, res) => {
   try {
-    const query = {};
+    let query = {};
+    let sort = {}
+    
+    const sortField = req.query.sortField
+    const sortOrder = req.query.sortOrder
+
+
+
     if (req.query.Email) {
       query.Email = req.query.Email;
     }
-    const result = await mybids.find(query).toArray();
+    if (sortField && sortOrder){
+      sort[sortField] = sortOrder
+    }
+    const cursor = mybids.find(query).sort(sort);
+    const result = await cursor.toArray()
     res.send(result);
+    
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
@@ -147,42 +189,46 @@ app.get('/BidRequest', async (req, res) => {
 
 // byer delete and ackcept 
 
-app.patch('/BidRequest/:id', async(request, response) => {
+app.patch('/BidRequest/:id', async (request, response) => {
   const id = request.params.id
   const query = { _id: new ObjectId(id) }
 
   const updateStatue = {
     $set: {
-     status: request.body.status,
+      status: request.body.status,
     },
   };
   const result = await mybids.updateOne(query, updateStatue);
   response.send(result);
 });
-app.patch('/mybids/:id', async(request, response) => {
+app.patch('/mybids/:id', async (request, response) => {
   const id = request.params.id
   const query = { _id: new ObjectId(id) }
 
   const updateStatue = {
     $set: {
-     status: request.body.status,
+      status: request.body.status,
     },
   };
   const result = await mybids.updateOne(query, updateStatue);
   response.send(result);
 });
-app.patch('/BidRequest/:id', async(request, response) => {
+app.patch('/BidRequest/:id', async (request, response) => {
   const id = request.params.id
   const query = { _id: new ObjectId(id) }
 
   const updateStatue = {
     $set: {
-     status: request.body.status,
+      status: request.body.status,
     },
   };
   const result = await mybids.updateOne(query, updateStatue);
   response.send(result);
 });
+
+
+// sort by viwe in 
+
 
 
 app.listen(port, () => {
