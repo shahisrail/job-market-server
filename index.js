@@ -76,14 +76,13 @@ async function run() {
       })
         .send({ success: true })
     })
+// post for lohout user 
 
     app.post('/logout', async (req, res) => {
       const user = req.body
       console.log('login out', user);
       res.clearCookie('token', { maxAge: 0, httpOnly: true, secure: false }).send({ succses: true })
     })
-
-
 
     //service  
 
