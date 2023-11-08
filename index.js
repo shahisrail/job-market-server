@@ -10,7 +10,9 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: [
-    'http://localhost:5173'
+    // 'http://localhost:5173',
+    'https://assaignment-11-63ae5.web.app',
+    'https://assaignment-11-63ae5.firebaseapp.com'
   ],
   credentials: true
 }));
