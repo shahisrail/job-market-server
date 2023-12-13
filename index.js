@@ -10,9 +10,8 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: [
-    // 'http://localhost:5173',
-    'https://assaignment-11-63ae5.web.app',
-    'https://assaignment-11-63ae5.firebaseapp.com'
+    "http://localhost:5173",
+    "https://majestic-duckanoo-d34de8.netlify.app",
   ],
   credentials: true
 }));
@@ -35,7 +34,7 @@ const logger = (req, res, next) => {
   console.log(('log : info'), req.method, req.url);
   next();
 }
-// middelewares verify token
+// // middelewares verify token
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token
   console.log("token in the middle ware", token);
@@ -57,14 +56,12 @@ let mybids;
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     Addjobs = client.db("Jobmarket").collection('Addjobs');
     mybids = client.db("Jobmarket").collection('mybids');
 
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-
+   
 
     // auth api
     app.post('/jwt', async (req, res) => {
@@ -73,8 +70,8 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '17hr' })
       res.cookie('token', token, {
         httpOnly: true,
-        secure: true,
-        sameSite: false
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       })
         .send({ success: true })
     })
@@ -170,10 +167,7 @@ async function run() {
         const sortOrder = req.query.sortOrder
         console.log('token woner info', req.user);
        
-        if (req.user.email !== req.query.Email) {
-          return res.send.status(403).send({ massage: "forbidden accsess" })
-        }
-
+        
         if (req.query.Email) {
           query.Email = req.query.Email;
         }
@@ -261,6 +255,9 @@ async function run() {
       const result = await mybids.updateOne(query, updateStatue);
       response.send(result);
     });
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
 
   } catch (error) {
     console.error(error);
