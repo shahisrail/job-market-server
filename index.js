@@ -34,7 +34,7 @@ const logger = (req, res, next) => {
   console.log(('log : info'), req.method, req.url);
   next();
 }
-// // middelewares verify token
+// // // middelewares verify token
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token
   console.log("token in the middle ware", token);
@@ -64,17 +64,17 @@ async function run() {
    
 
     // auth api
-    app.post('/jwt', async (req, res) => {
-      const user = req.body
-      console.log("user token", user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '17hr' })
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      })
-        .send({ success: true })
-    })
+    // app.post('/jwt', async (req, res) => {
+    //   const user = req.body
+    //   console.log("user token", user);
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '17hr' })
+    //   res.cookie('token', token, {
+    //     httpOnly: true,
+    //     secure: process.env.NODE_ENV === 'production',
+    //     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    //   })
+    //     .send({ success: true })
+    // })
 // post for lohout user 
 
     app.post('/logout', async (req, res) => {
@@ -155,14 +155,39 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/mybids',verifyToken, async (req, res) => {
+    // app.get('/mybids',verifyToken, async (req, res) => {
+    //   try {
+    //     let query = {};
+    //     let sort = {}
+    //     if (req.user.email !== req.query.Email) {
+    //       return res.send.status(403).send({ massage: "forbidden accsess" })
+    //     }
+
+    //     const sortField = req.query.sortField
+    //     const sortOrder = req.query.sortOrder
+    //     console.log('token woner info', req.user);
+       
+        
+    //     if (req.query.Email) {
+    //       query.Email = req.query.Email;
+    //     }
+    //     if (sortField && sortOrder) {
+    //       sort[sortField] = sortOrder
+    //     }
+    //     const cursor = mybids.find(query).sort(sort);
+    //     const result = await cursor.toArray()
+    //     res.send(result);
+
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).send("Internal Server Error");
+    //   }
+    // });
+    app.get('/mybids', async (req, res) => {
       try {
         let query = {};
         let sort = {}
-        if (req.user.email !== req.query.Email) {
-          return res.send.status(403).send({ massage: "forbidden accsess" })
-        }
-
+        
         const sortField = req.query.sortField
         const sortOrder = req.query.sortOrder
         console.log('token woner info', req.user);
@@ -199,12 +224,12 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/BidRequest', verifyToken, async (req, res) => {
+    app.get('/BidRequest', async (req, res) => {
       try {
         const query = {};
-        if (req.user.email !== req.query.Byeremail) {
-          return res.send.status(403).send({ massage: "forbidden accsess" })
-        }
+        // if (req.user.email !== req.query.Byeremail) {
+        //   return res.send.status(403).send({ massage: "forbidden accsess" })
+        // }
         if (req.query.Byeremail) {
           query.Byeremail = req.query.Byeremail;
         }
